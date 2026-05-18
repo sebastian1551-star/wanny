@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontrola Składowania BHP</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #262626;
+            padding: 30px;
+            border: 2px solid #404040;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        h1 {
+            color: #ffffff;
+            text-align: center;
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 3px solid #ffffff;
+            padding-bottom: 15px;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 30px;
+            margin-top: 25px;
+        }
+        @media (max-width: 950px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background: #333333;
+            padding: 20px;
+            border: 1px solid #4d4d4d;
+        }
+        .panel h3 {
+            margin-top: 0;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #4d4d4d;
+            padding-bottom: 5px;
+        }
+        .container-row {
+            display: flex;
+            gap: 10px;
+            background: #1f1f1f;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #404040;
+            align-items: center;
+        }
+        select, input {
+            padding: 10px;
+            border: 1px solid #555;
+            background: #2a2a2a;
+            color: #fff;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .substance-name { flex: 2; }
+        .substance-type { flex: 2; }
+        input[type="number"] { width: 80px; }
+        
+        button {
+            cursor: pointer;
+            padding: 10px 15px;
+            border: 1px solid #555;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .btn-add {
+            background-color: #ffffff;
+            color: #000000;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .btn-add:hover { background-color: #cccccc; }
+        .btn-remove { background-color: #000000; color: #ffffff; border-color: #444; }
+        .btn-remove:hover { background-color: #cc0000; border-color: #cc0000; }
+        
+        .btn-pdf {
+            background-color: #000000;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            width: 100%;
+            padding: 12px;
+            font-size: 13px;
+            margin-top: 15px;
+            letter-spacing: 1px;
+        }
+        .btn-pdf:hover {
+            background-color: #ffffff;
+            color: #000000;
+        }
+        
+        /* Monochromatyczna Wizualizacja */
+        .visual-space {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            min-height: 260px;
+            background: #111111;
+            border: 1px solid #444;
+            padding: 20px 20px 10px 20px;
+            position: relative;
+        }
+        .drums-rack {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: -2px;
+            z-index: 2;
+        }
+        .drum {
+            width: 60px;
+            position: relative;
+            text-align: center;
+            color: #000;
+            font-weight: bold;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            border: 2px solid #000;
+        }
+        .drum-label {
+            position: absolute;
+            top: -25px;
+            color: #fff;
+            font-size: 10px;
+            white-space: nowrap;
+            background: #222;
+            padding: 2px 5px;
+            border: 1px solid #444;
+        }
+        .industrial-bund {
+            width: 95%;
+            height: 30px;
+            background: #ffffff;
+            border: 2px solid #ffffff;
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .bund-grid {
+            width: 100%;
+            height: 6px;
+            background: #000000;
+            position: absolute;
+            top: 0;
+        }
+        .bund-text {
+            color: #000000;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-top: 4px;
+        }
+        
+        /* Bloki Wyników i Tabela */
+        .summary-box {
+            background: #1f1f1f;
+            border: 1px solid #444;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .summary-box.danger-state, .visual-space.danger-state {
+            border: 2px dashed #ff3333;
+            background: #261212;
+        }
+        .alert {
+            padding: 15px;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .alert-danger { background: #ff3333; color: #000000; text-transform: uppercase; }
+        .alert-success { background: #222; color: #ffffff; border: 1px solid #ffffff; }
+        
+        /* Macierz Tabela BHP */
+        .matrix-container {
+            margin-top: 20px;
+            background: #1f1f1f;
+            padding: 15px;
+            border: 1px solid #444;
+        }
+        .compat-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            text-align: center;
+            color: #ccc;
+        }
+        .compat-table th, .compat-table td {
+            border: 1px solid #444;
+            padding: 8px 4px;
+        }
+        .compat-table th {
+            background: #111;
+            color: #fff;
+            font-weight: normal;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+        .active-substance {
+            background: #444444 !important;
+            color: #ffffff !important;
+            font-weight: bold;
+        }
+        .cell-ok { background: #222; color: #2ecc71; }
+        .cell-no { background: #331111; color: #ff3333; font-weight: bold; }
+        
+        @keyframes flash-red {
+            0%, 100% { background-color: #331111; color: #ff3333; }
+            50% { background-color: #ff3333; color: #000000; }
+        }
+        .cell-conflict-trigger {
+            animation: flash-red 0.8s infinite;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>KONTROLA SKŁADOWANIA BHP</h1>
+    
+    <div class="main-layout">
+        <div class="panel">
+            <h3>1. Rejestr substancji na stanowisku:</h3>
+            <div id="containers-list"></div>
+            <button class="btn-add" onclick="addContainerRow()">+ Dodaj jednostkę składową</button>
+            
+            <div id="alert-box" class="alert"></div>
+            
+            <div class="matrix-container">
+                <h4 style="margin: 0 0 10px 0; text-transform:uppercase; font-size:12px; letter-spacing:1px;">Główna Macierz Zgodności Magazynowej:</h4>
+                <table class="compat-table">
+                    <thead>
+                        <tr>
+                            <th>Substancja</th>
+                            <th id="th-OILS">Oleje / Smary</th>
+                            <th id="th-SOLVENTS">Rozpuszczalniki</th>
+                            <th id="th-ACIDS">Kwasy</th>
+                            <th id="th-BATTERIES">Akumulatory</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="tr-OILS">
+                            <td class="row-header" style="text-align:left; font-weight:bold;">Oleje / Smary</td>
+                            <td class="cell-ok">TAK</td>
+                            <td class="cell-ok">TAK</td>
+                            <td class="cell-no" id="m-OILS-ACIDS">NIE</td>
+                            <td class="cell-no" id="m-OILS-BATTERIES">NIE</td>
+                        </tr>
+                        <tr id="tr-SOLVENTS">
+                            <td class="row-header" style="text-align:left; font-weight:bold;">Rozpuszczalniki</td>
+                            <td class="cell-ok">TAK</td>
+                            <td class="cell-ok">TAK</td>
+                            <td class="cell-no" id="m-SOLVENTS-ACIDS">NIE</td>
+                            <td class="cell-no" id="m-SOLVENTS-BATTERIES">NIE</td>
+                        </tr>
+                        <tr id="tr-ACIDS">
+                            <td class="row-header" style="text-align:left; font-weight:bold;">Kwasy / Żrące</td>
+                            <td class="cell-no" id="m-ACIDS-OILS">NIE</td>
+                            <td class="cell-no" id="m-ACIDS-SOLVENTS">NIE</td>
+                            <td class="cell-ok">TAK</td>
+                            <td class="cell-no" id="m-ACIDS-BATTERIES">NIE</td>
+                        </tr>
+                        <tr id="tr-BATTERIES">
+                            <td class="row-header" style="text-align:left; font-weight:bold;">Akumulatory</td>
+                            <td class="cell-no" id="m-BATTERIES-OILS">NIE</td>
+                            <td class="cell-no" id="m-BATTERIES-SOLVENTS">NIE</td>
+                            <td class="cell-no" id="m-BATTERIES-ACIDS">NIE</td>
+                            <td class="cell-ok">TAK</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="panel" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <h3>2. Schemat techniczny rozmieszczenia:</h3>
+                <div class="visual-space" id="visual-space">
+                    <div class="drums-rack" id="drums-rack"></div>
+                    <div class="industrial-bund" id="industrial-bund">
+                        <div class="bund-grid"></div>
+                        <span class="bund-text">PALETA WYCHWYTOWA</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="summary-box" id="summary-box">
+                <div style="margin-bottom: 10px;">MIN. POJEMNOŚĆ WYCHWYTOWA: <br><strong id="required-bund" style="font-size: 28px; color: #fff;">0 L</strong></div>
+                <div style="font-size: 11px; color: #888; margin-bottom: 12px; text-transform: uppercase;">
+                    Kryterium: max(110% V_max , 25% V_sum)
+                </div>
+                <div style="border-top: 1px solid #444; padding-top: 10px; font-size: 13px;">
+                    SPECYFIKACJA URZĄDZENIA: <br><strong id="suggested-type" style="text-transform: uppercase;">-</strong>
+                </div>
+                <div style="font-size: 11px; color: #666; margin-top: 8px; margin-bottom: 10px;">
+                    Łącznie cieczy: <span id="total-liters">0</span> L | Największa jednostka: <span id="max-liter">0</span> L
+                </div>
+                
+                <button class="btn-pdf" onclick="generatePDF()">↓ Generuj raport wanny (PDF)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const SUBSTANCE_CONFIG = {
+    oil: { name: "Oleje / Smary", color: "#ffffff", border: "#000000", group: "OILS", shape: "drum" },
+    paint_solv: { name: "Farby / Rozpuszczalniki", color: "#cccccc", border: "#000000", group: "SOLVENTS", shape: "drum" },
+    acid: { name: "Kwasy / Żrące", color: "#777777", border: "#ffffff", group: "ACIDS", shape: "drum" },
+    battery: { name: "Akumulatory (Ołów-Kwas)", color: "#000000", border: "#ffffff", group: "BATTERIES", shape: "block" }
+};
+
+function checkCompatibilityConflict(activeGroups) {
+    let conflicts = [];
+    if (activeGroups.has("BATTERIES") && activeGroups.has("SOLVENTS")) conflicts.push(["BATTERIES", "SOLVENTS", "Miks krytyczny! Akumulatory obok łatwopalnych par rozpuszczalnika grożą wybuchem/pożarem."]);
+    if (activeGroups.has("BATTERIES") && activeGroups.has("OILS")) conflicts.push(["BATTERIES", "OILS", "Zakaz składowania akumulatorów z olejami na wspólnej powierzchni."]);
+    if (activeGroups.has("BATTERIES") && activeGroups.has("ACIDS")) conflicts.push(["BATTERIES", "ACIDS", "Akumulatory wymagają osobnych stref, zakaz mieszania z kwasami technicznymi."]);
+    if (activeGroups.has("SOLVENTS") && activeGroups.has("ACIDS")) conflicts.push(["SOLVENTS", "ACIDS", "Krytyczna reakcja niepożądana! Łatwopalne rozpuszczalniki i żrące kwasy nie mogą stać na jednej wannie."]);
+    if (activeGroups.has("OILS") && activeGroups.has("ACIDS")) conflicts.push(["OILS", "ACIDS", "Zakaz łączenia olejów z kwasami na jednej wannie bez przegród hermetycznych."]);
+    return conflicts;
+}
+
+function addContainerRow() {
+    const list = document.getElementById('containers-list');
+    const rowId = 'row_' + Date.now();
+    
+    const row = document.createElement('div');
+    row.className = 'container-row';
+    row.id = rowId;
+    
+    let options = '';
+    for (let key in SUBSTANCE_CONFIG) {
+        options += `<option value="${key}">${SUBSTANCE_CONFIG[key].name}</option>`;
+    }
+
+    row.innerHTML = `
+        <input type="text" class="substance-name" placeholder="Nazwa własna / Handlowa substancji" oninput="updateAll()">
+        <select class="substance-type" onchange="updateAll()">
+            ${options}
+        </select>
+        <input type="number" class="volume-input" value="100" min="1" max="2000" oninput="updateAll()">
+        <span style="font-weight:bold; color:#888; font-size:12px;">L</span>
+        <button class="btn-remove" onclick="removeRow('${rowId}')">X</button>
+    `;
+    
+    list.appendChild(row);
+    updateAll();
+}
+
+function removeRow(id) {
+    document.getElementById(id).remove();
+    updateAll();
+}
+
+function clearMatrixHighlights() {
+    document.querySelectorAll('.compat-table th, .compat-table tr, .compat-table td').forEach(el => {
+        el.classList.remove('active-substance');
+        el.classList.remove('cell-conflict-trigger');
+    });
+}
+
+function highlightMatrix(activeGroups, conflicts) {
+    clearMatrixHighlights();
+    activeGroups.forEach(group => {
+        const th = document.getElementById(`th-${group}`);
+        const tr = document.getElementById(`tr-${group}`);
+        if(th) th.classList.add('active-substance');
+        if(tr) tr.classList.add('active-substance');
+    });
+    conflicts.forEach(c => {
+        const g1 = c[0];
+        const g2 = c[1];
+        const cell1 = document.getElementById(`m-${g1}-${g2}`);
+        const cell2 = document.getElementById(`m-${g2}-${g1}`);
+        if(cell1) cell1.classList.add('cell-conflict-trigger');
+        if(cell2) cell2.classList.add('cell-conflict-trigger');
+    });
+}
+
+let currentGlobalReportData = { isBlocked: true };
+
+function updateAll() {
+    const rows = document.querySelectorAll('.container-row');
+    const rack = document.getElementById('drums-rack');
+    const alertBox = document.getElementById('alert-box');
+    const summaryBox = document.getElementById('summary-box');
+    const visualSpace = document.getElementById('visual-space');
+    const industrialBund = document.getElementById('industrial-bund');
+    
+    rack.innerHTML = '';
+    let totalVolume = 0;
+    let maxVolume = 0;
+    let activeGroups = new Set();
+    let containerCount = rows.length;
+
+    rows.forEach(row => {
+        const type = row.querySelector('.substance-type').value;
+        activeGroups.add(SUBSTANCE_CONFIG[type].group);
+    });
+
+    const conflicts = checkCompatibilityConflict(activeGroups);
+    highlightMatrix(activeGroups, conflicts);
+
+    if (conflicts.length > 0) {
+        alertBox.className = "alert alert-danger";
+        alertBox.innerText = "⚠️ " + conflicts[0][2];
+        alertBox.style.display = 'block';
+        
+        summaryBox.className = "summary-box danger-state";
+        visualSpace.className = "visual-space danger-state";
+        industrialBund.style.backgroundColor = "#ff3333";
+        industrialBund.style.borderColor = "#ff3333";
+        
+        document.getElementById('required-bund').innerText = "ZABLOKOWANO";
+        document.getElementById('suggested-type').innerText = "ZAKAZ SKŁADOWANIA KRZYŻOWEGO";
+        document.getElementById('total-liters').innerText = "0";
+        document.getElementById('max-liter').innerText = "0";
+        
+        currentGlobalReportData = { isBlocked: true };
+        return; 
+    }
+
+    summaryBox.className = "summary-box";
+    visualSpace.className = "visual-space";
+    industrialBund.style.backgroundColor = "#ffffff";
+    industrialBund.style.borderColor = "#ffffff";
+
+    rows.forEach((row, index) => {
+        const type = row.querySelector('.substance-type').value;
+        const volume = parseFloat(row.querySelector('.volume-input').value) || 0;
+        
+        totalVolume += volume;
+        if (volume > maxVolume) maxVolume = volume;
+
+        const drum = document.createElement('div');
+        drum.className = 'drum';
+        
+        let elementHeight = Math.min(160, Math.max(45, volume * 0.7)); 
+        drum.style.height = elementHeight + 'px';
+        drum.style.backgroundColor = SUBSTANCE_CONFIG[type].color;
+        drum.style.borderColor = SUBSTANCE_CONFIG[type].border;
+        drum.style.color = (SUBSTANCE_CONFIG[type].color === "#000000") ? "#ffffff" : "#000000";
+
+        if(SUBSTANCE_CONFIG[type].shape === "block") {
+            drum.style.borderRadius = "2px";
+            drum.innerHTML = `<span style="font-size:9px; margin-bottom:2px;">[+][-]</span><b>${volume}L</b>`;
+        } else {
+            drum.style.borderRadius = "6px 6px 4px 4px";
+            drum.innerHTML = `<b>${volume}L</b>`;
+        }
+        
+        const label = document.createElement('div');
+        label.className = 'drum-label';
+        label.innerText = `Poz. ${index + 1}`;
+        drum.appendChild(label);
+        
+        rack.appendChild(drum);
+    });
+
+    const v1 = maxVolume * 1.10;
+    const v2 = totalVolume * 0.25;
+    const requiredBund = Math.max(v1, v2);
+
+    document.getElementById('total-liters').innerText = totalVolume.toFixed(0);
+    document.getElementById('max-liter').innerText = maxVolume.toFixed(0);
+    document.getElementById('required-bund').innerText = requiredBund.toFixed(1) + " L";
+
+    const typeSpan = document.getElementById('suggested-type');
+    let calculatedTypeStr = "-";
+
+    if (containerCount === 0) {
+        typeSpan.innerText = "-";
+        alertBox.style.display = 'none';
+    } else {
+        alertBox.className = "alert alert-success";
+        alertBox.innerText = "✅ Separacja substancji zgodna z wytycznymi magazynowymi BHP.";
+        alertBox.style.display = 'block';
+
+        if (requiredBund <= 40) calculatedTypeStr = "PLATFORMA STANOWISKOWA (P_MIN: 40L)";
+        else if (requiredBund <= 220) calculatedTypeStr = "WANNA PRZEMYSŁOWA 2-BECZKOWA (P_MIN: 220L)";
+        else if (requiredBund <= 440) calculatedTypeStr = "WANNA PRZEMYSŁOWA 4-BECZKOWA (P_MIN: 440L)";
+        else calculatedTypeStr = `STACJA WYCHWYTOWA WIELOGABARYTOWA (MIN: ${requiredBund.toFixed(0)}L)`;
+        
+        typeSpan.innerText = calculatedTypeStr;
+    }
+
+    currentGlobalReportData = {
+        isBlocked: false,
+        required: requiredBund.toFixed(1),
+        device: calculatedTypeStr
+    };
+}
+
+// PROSTY RAPORT PDF (Tylko Wanna, Pojemność i Typ)
+function generatePDF() {
+    if (currentGlobalReportData.isBlocked) {
+        alert("Nie można wygenerować raportu: Wykryto błędy kompatybilności substancji lub brak danych.");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Nagłówek techniczny
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("SPECYFIKACJA TECHNICZNA STANOWISKA", 14, 25);
+    
+    doc.setFontSize(9);
+    doc.setFont("Helvetica", "normal");
+    doc.text(`Data: ${new Date().toLocaleDateString()} | Status: ZGODNE (BHP)`, 14, 32);
+    
+    doc.line(14, 36, 196, 36);
+
+    // Karta Wynikowa Wanny (Główna sekcja)
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("PARAMETRY WYCHWYTYWANIA:", 14, 48);
+    
+    // Obramowanie wyniku
+    doc.rect(14, 53, 182, 35);
+    
+    // Treść raportu
+    doc.setFontSize(14);
+    doc.text(`WYMAGANA POJEMNOSC WANNY: ${currentGlobalReportData.required} L`, 20, 65);
+    
+    doc.setFontSize(11);
+    doc.setFont("Helvetica", "normal");
+    doc.text(`Sugerowany typ urzadzenia: ${currentGlobalReportData.device}`, 20, 78);
+    
+    // Stopka prawno-techniczna
+    doc.setFont("Helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text("* Dobór parametrów wykonano zgodnie z kryterium: max(110% pojemnosci najwiekszego zbiornika, 25% objetosci sumarycznej).", 14, 100);
+
+    // Pobieranie
+    doc.save("Specyfikacja_Wanny_Wychwytowej.pdf");
+}
+
+addContainerRow();
+</script>
+
+</body>
+</html>
